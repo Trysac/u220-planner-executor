@@ -1,29 +1,16 @@
 # Testing
 
-## Running
+Tests live in `tests/` and exercise the public API only.
 
 ```sh
-uv run pytest --cov=planner_executor   # tests with coverage report
-uv run python scripts/check.py      # every gate, as CI and the factory run it
+uv run pytest --cov=planner_executor
 ```
 
-## Policy
+The gate requires branch coverage of at least 80 %. The suite uses `RecordedLLM` for fixed reply
+sequences and `FakeLLM` when a test needs to inspect the messages sent to the planner. No test needs
+network access or an API key.
 
-- Branch coverage of `src/planner_executor` must stay at or above 80 %; the gate fails below it.
-- Tests exercise the public API (`import planner_executor`) and assert every observable effect:
-  return values, raised exceptions and their messages.
-- Each bug fix starts with a failing test that reproduces it.
-- Tests are deterministic: no network, no wall clock, no dependence on test order.
-
-## Tiers
-
-- Local tier (every gate run, coverage measured here): unit and property tests, plus conformance on small
-  fixtures kept in the repository.
-- CI tier: conformance that needs an external tool or a download. Mark them `@pytest.mark.conformance`; `scripts/check.py` deselects them locally
-  (unless `FABRICA_CI=1`). The CI `conformance` job sets `FABRICA_CI=1` and runs the full suite. Tools are installed
-  by the optional `ci/conformance-setup.sh` (bash, CI only; verify every download against a pinned SHA-256), and
-  tagged tests skip cleanly when their tool is missing.
-
-## Layout
-
-`tests/test_<module>.py` mirrors each public module. Shared fixtures go in `tests/conftest.py`.
+Covered behaviour includes plan validation and every `PlanError` code, whole-string reference
+substitution, truncation at 4000 characters, the step budget, replan exhaustion, `ToolFailure`
+versus generic tool exceptions (and that a generic exception's message never leaks into prompts),
+and the content-free `on_event` payloads.

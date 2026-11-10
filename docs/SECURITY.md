@@ -1,22 +1,16 @@
-# Security notes
+# Security
 
-## Threat model
+`planner_executor` ships no runtime dependencies, no network code and no credential handling. The
+attacker-controlled input is the planner's reply, so the package treats it defensively:
 
-`trysac-planner-executor` is a pure library without I/O. The main risks are:
+- replies are size-limited and JSON depth is bounded, with `RecursionError` converted to
+  `PlanError("invalid_plan")`;
+- plans are fully validated before any tool runs, so unknown tools and bad references never reach
+  execution;
+- tool outputs are truncated to 4000 characters before being stored or placed in prompts;
+- `ToolFailure` messages are capped at 200 characters, while any other exception is reported as
+  `tool_error` without its message, so tool internals never leak to the planner;
+- `on_event` payloads carry only event kind, step id, tool name and ok/reason flags, never
+  arguments, outputs or the goal.
 
-- **Supply chain**: a compromised dependency or CI action. Mitigation: no runtime dependencies,
-  Dependabot weekly updates, actions pinned to major versions, minimal workflow permissions.
-- **Leaked secrets**: tokens committed by mistake. Mitigation: `gitleaks` runs in the local gates
-  and in CI; `.env` files are git-ignored.
-- **Insecure code**: shell injection, weak hashes, unsafe deserialization. Mitigation: Ruff's
-  `S` rules in lint and a `security` gate (Bandit, high severity fails, `# nosec` ignored); fix the
-  code instead of silencing it.
-- **Untrusted input**: callers may pass hostile strings. Mitigation: validate input and fail with
-  explicit exceptions; never `eval`, `exec` or deserialize untrusted data.
-
-## Publishing
-
-Releases are published to PyPI with trusted publishing (OIDC) when available, never with a
-long-lived token stored in the repository.
-
-To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+Report vulnerabilities through the repository's security policy (`SECURITY.md` at the root).
