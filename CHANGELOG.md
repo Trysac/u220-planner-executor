@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added planner-executor agent pattern with validated JSON plans, step references, bounded replanning, and content-free events.
 - Initial project structure from the factory utility template.

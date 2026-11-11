@@ -8,8 +8,10 @@ Planner-executor agent pattern over a text-only LLM port: a validated JSON plan 
 
 ## Problem
 
-Describe in two or three sentences the concrete problem this utility solves, who hits it, and what
-they do today without it. Replace this paragraph when the first real feature lands.
+Agents that decide one tool call at a time drift, repeat themselves and spend tokens re-reading the
+whole history, while plans written once break on the first failing step. `planner-executor` keeps the
+pattern small: the model writes a validated JSON plan, code executes it deterministically, and only a
+failure triggers a new plan, with hard bounds on replans and total steps.
 
 ## Install
 
@@ -24,16 +26,26 @@ Requires Python 3.10 or newer. No runtime dependencies.
 ## Usage
 
 ```python
-import planner_executor
+from planner_executor import PlanError, RecordedLLM, parse_plan, run
 
-# normalize() trims surrounding whitespace and lower-cases the text.
-print(planner_executor.normalize("  Hello World "))  # -> "hello world"
+plan = (
+    '{"steps": [{"id": "s1", "tool": "add", "args": {"a": 2, "b": 3}},'
+    ' {"id": "s2", "tool": "finish", "args": {"answer": "$s1"}}]}'
+)
 
-# Blank input is rejected explicitly instead of returning an empty string.
+result = run(
+    "add 2 and 3",
+    RecordedLLM([plan]),
+    {"add": lambda args: str(args["a"] + args["b"])},
+)
+print(result.status, result.answer)  # done 5
+print(result.replans, result.reason)  # 0 None
+
+# Invalid plans raise PlanError with a machine-readable code.
 try:
-    planner_executor.normalize("   ")
-except ValueError as exc:
-    print(f"rejected: {exc}")
+    parse_plan('{"steps": []}')
+except PlanError as exc:
+    print(exc.code)  # missing_finish
 ```
 
 ## Documentation
